@@ -1,12 +1,70 @@
-
 from obspy import read_inventory, read, UTCDateTime
 from obspy.imaging.cm import pqlx
 from  matplotlib.pyplot import figure
 from  sys import argv
 from obspy.signal import PPSD
 from obspy.clients.fdsn import Client
+from numpy import sin,cos,arcsin,sqrt,deg2rad,mean
 
+def haversine(lon1, lat1, lon2, lat2):
+    """
+    Calculate the great circle distance between two points
+    on the earth (specified in decimal degrees)
+    """
+    # convert decimal degrees to radians
+    lon1, lat1, lon2, lat2 = map(deg2rad, [lon1, lat1, lon2, lat2])
 
+    # haversine formula
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * arcsin(sqrt(a))
+    r = 6371000 # Radius of earth in meters. Use 3956 for miles
+    return c * r
+
+def mapaspect(fig,m):
+    diaginch = (sum(m.ax.get_position().size**2.))**.5*(sum(fig.get_size_inches()**2.))**.5
+    diagkm = haversine(min(m.boundarylons),
+                       min(m.boundarylats),
+                       max(m.boundarylons),
+                       max(m.boundarylats))/1000.
+    widthinch = m.ax.get_position().size[0]*fig.get_size_inches()[0]
+    widthkm = haversine(min(m.boundarylons),
+                        mean(m.boundarylats),
+                        max(m.boundarylons),
+                        mean(m.boundarylats))/1000.
+    heightinch = m.ax.get_position().size[1]*fig.get_size_inches()[1]
+    heightkm = haversine(mean(m.boundarylons),
+                         min(m.boundarylats),
+                         mean(m.boundarylons),
+                         max(m.boundarylats))/1000.
+    m.ax.set_aspect((heightkm/widthkm) / (heightinch/widthinch))
+
+def fillmap(f,inventory,zoom=1,xpixels=500,dpi=96):
+    f.bmap.arcgisimage(server='http://server.arcgisonline.com/ArcGIS',
+                service='World_Imagery',
+                  xpixels=xpixels/zoom**.1,
+                      dpi=dpi)
+
+    im1 = f.bmap.arcgisimage(service='Reference/World_Boundaries_and_Places_Alternate',
+                                   xpixels=xpixels/zoom**.1,
+                                   zorder=999999,
+                      dpi=dpi)
+    if False:
+        im3 = f.bmap.arcgisimage(server='http://server.arcgisonline.com/ArcGIS',
+                                 service='Elevation/World_Hillshade',
+                                       xpixels=xpixels/zoom**.1,
+                      dpi=dpi)
+        data=im3.get_array()
+        data[:,:,3] = 1 - (data[:,:,0]*data[:,:,1]*data[:,:,2])
+        im3.set_array(data)
+
+    mapaspect(f,f.bmap)
+    f=inventory.plot(fig=f,
+                     color='0.0',
+                     water_fill_color='None',
+                     continent_fill_color='None',
+                     resolution='i')
 
 # Map function
 def sitemap(inventory,
@@ -17,32 +75,6 @@ def sitemap(inventory,
     from mpl_toolkits.basemap import Basemap
     from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
     from mpl_toolkits.axes_grid1.inset_locator import mark_inset
-
-    def fillmap(f,inventory,zoom=1,xpixels=xpixels):
-        f.bmap.arcgisimage(server='http://server.arcgisonline.com/ArcGIS',
-                    service='World_Imagery',
-                      xpixels=xpixels/zoom**.1,
-                          dpi=dpi)
-
-        im1 = f.bmap.arcgisimage(service='Reference/World_Boundaries_and_Places_Alternate',
-                                       xpixels=xpixels/zoom**.1,
-                                       zorder=999999,
-                          dpi=dpi)
-        if False:
-            im3 = f.bmap.arcgisimage(server='http://server.arcgisonline.com/ArcGIS',
-                                     service='Elevation/World_Hillshade',
-                                           xpixels=xpixels/zoom**.1,
-                          dpi=dpi)
-            data=im3.get_array()
-            data[:,:,3] = 1 - (data[:,:,0]*data[:,:,1]*data[:,:,2])
-            im3.set_array(data)
-
-        f=inventory.plot(fig=f,
-                         color='0.0',
-                         water_fill_color='None',
-                         continent_fill_color='None',
-                         resolution='i')
-
 
     f = figure()
     ax = f.add_subplot(111)
@@ -55,7 +87,7 @@ def sitemap(inventory,
                      suppress_ticks=False,
                      resolution='h',
                      ax=ax)
-    fillmap(f,inventory)
+    fillmap(f,inventory,xpixels=xpixels,dpi=dpi)
 
     axins = zoomed_inset_axes(ax, zoom, loc=1)
     axins.set_xlim(inventory[0][0].longitude-0.011, inventory[0][0].longitude+0.011)
@@ -70,7 +102,7 @@ def sitemap(inventory,
                      suppress_ticks=False,
                      resolution='h',
                      ax=axins)
-    fillmap(f,inventory,zoom=zoom)
+    fillmap(f,inventory,zoom=zoom,xpixels=xpixels,dpi=dpi)
     mark_inset(ax, axins, loc1=2, loc2=4, fc="none", ec="0.5")
 
 
