@@ -8,6 +8,7 @@ Here's a quick example:
 ```
 /Users/me/anaconda3/bin/python3 ./fdsnws2ppsd.py "CH.FIESA..HHZ" -plot=ppsd ETH                                                               
 ```
+![ppsd example](ppsd.png)
 
 ## How?
 Given channel `NN.SSSS.LL.CCC`, and fdsnws running at `http:///localhost:8080/`, run as:
