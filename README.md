@@ -3,7 +3,7 @@
 ## What?
 Make PPSD analysis directly from an FDSN web service. 
 It uses data and metadata from the last 2 hours.
-The code requires `Python3`, `Obspy` and `Matplolib`.
+The code requires `Python3`, `Obspy`, `Numpy` and `Matplolib`.
 
 Here's a quick example, reproduces the header image:
 ```
